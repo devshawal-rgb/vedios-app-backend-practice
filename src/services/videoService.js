@@ -1,9 +1,11 @@
 import { Video } from '../models/Video.js';
+import { Category } from '../models/Category.js';
+import { User } from '../models/User.js';
 import { Like } from '../models/Like.js';
 import { Comment } from '../models/Comment.js';
 
 export class VideoService {
-  static async getAllVideos({ category, search, page = 1, limit = 10 }) {
+  static async getAllVideos({ category, search, page = 1, limit = 20 }) {
     const query = { isPublished: true };
 
     if (category) {
@@ -53,7 +55,10 @@ export class VideoService {
 
   static async createVideo(videoData) {
     const video = await Video.create(videoData);
-    return video;
+    const populated = await Video.findById(video._id)
+      .populate('category', 'name icon')
+      .populate('uploader', 'name avatar');
+    return populated || video;
   }
 
   static async incrementViews(videoId) {
