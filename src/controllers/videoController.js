@@ -5,6 +5,7 @@ import { VideoService } from '../services/videoService.js';
 import { Video } from '../models/Video.js';
 import { User } from '../models/User.js';
 import { Category } from '../models/Category.js';
+import { uploadToR2, deleteFromR2 } from '../services/r2Service.js';
 
 export const getVideos = asyncWrapper(async (req, res) => {
   const { category, search, page, limit } = req.query;
@@ -23,19 +24,25 @@ export const createVideo = asyncWrapper(async (req, res) => {
   let videoUrl = req.body.videoUrl;
   let thumbnailUrl = req.body.thumbnailUrl;
 
-  // Handle uploaded files via Multer if provided
+  // Handle uploaded files directly to Cloudflare R2
   if (req.files) {
-    const host = req.protocol + '://' + req.get('host');
     if (req.files.video && req.files.video[0]) {
-      videoUrl = `${host}/uploads/${req.files.video[0].filename}`;
+      const vFile = req.files.video[0];
+      videoUrl = await uploadToR2(vFile.path, vFile.originalname, vFile.mimetype, 'videos');
     }
     if (req.files.thumbnail && req.files.thumbnail[0]) {
-      thumbnailUrl = `${host}/uploads/${req.files.thumbnail[0].filename}`;
+      const tFile = req.files.thumbnail[0];
+      thumbnailUrl = await uploadToR2(tFile.path, tFile.originalname, tFile.mimetype, 'thumbnails');
     }
   }
 
-  if (!title || !category || !videoUrl || !thumbnailUrl) {
-    return ApiResponse.error(res, 'Title, Category, Video File/URL and Thumbnail File/URL are required', 400);
+  if (!title || !category || !videoUrl) {
+    return ApiResponse.error(res, 'Title, Category and Video File/URL are required', 400);
+  }
+
+  // Fallback thumbnail if not provided
+  if (!thumbnailUrl) {
+    thumbnailUrl = 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=600&q=80';
   }
 
   // Resolve category ID if passed as string name or ID
@@ -77,7 +84,7 @@ export const createVideo = asyncWrapper(async (req, res) => {
     tags: parsedTags || []
   });
 
-  return ApiResponse.success(res, 'Video created successfully', video, 201);
+  return ApiResponse.success(res, 'Video created and stored successfully', video, 201);
 });
 
 export const updateVideo = asyncWrapper(async (req, res) => {
@@ -85,6 +92,18 @@ export const updateVideo = asyncWrapper(async (req, res) => {
 
   if (!video) {
     return ApiResponse.error(res, 'Video not found', 404);
+  }
+
+  // If new files uploaded, upload to Cloudflare R2
+  if (req.files) {
+    if (req.files.video && req.files.video[0]) {
+      const vFile = req.files.video[0];
+      req.body.videoUrl = await uploadToR2(vFile.path, vFile.originalname, vFile.mimetype, 'videos');
+    }
+    if (req.files.thumbnail && req.files.thumbnail[0]) {
+      const tFile = req.files.thumbnail[0];
+      req.body.thumbnailUrl = await uploadToR2(tFile.path, tFile.originalname, tFile.mimetype, 'thumbnails');
+    }
   }
 
   video = await Video.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
@@ -97,6 +116,10 @@ export const deleteVideo = asyncWrapper(async (req, res) => {
   if (!video) {
     return ApiResponse.error(res, 'Video not found', 404);
   }
+
+  // Clean up from Cloudflare R2 if it's hosted there
+  if (video.videoUrl) await deleteFromR2(video.videoUrl);
+  if (video.thumbnailUrl) await deleteFromR2(video.thumbnailUrl);
 
   await video.deleteOne();
   return ApiResponse.success(res, 'Video deleted successfully', null);
