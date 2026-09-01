@@ -1,0 +1,47 @@
+{
+  "categories": [
+    {
+      "_id": "1a0586f3ad7b474c6bf00000",
+      "name": "Love ",
+      "description": "Loave at irst sight ",
+      "icon": "code",
+      "createdAt": "2026-08-31T15:27:59.703Z",
+      "updatedAt": "2026-08-31T15:27:59.703Z"
+    }
+  ],
+  "videos": [
+    {
+      "_id": "1a0582549e5bee25cdb00000",
+      "title": "Test Video 1788185233619",
+      "description": "Test description",
+      "videoUrl": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+      "thumbnailUrl": "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe",
+      "duration": 0,
+      "category": "1a058246361e945eb7f00000",
+      "uploader": "1a0582549e3cc13db8f00000",
+      "viewsCount": 0,
+      "likesCount": 0,
+      "isPublished": true,
+      "tags": [
+        "test"
+      ],
+      "createdAt": "2026-08-31T14:07:13.893Z",
+      "updatedAt": "2026-08-31T14:07:13.893Z"
+    }
+  ],
+  "users": [
+    {
+      "_id": "1a0582549e3cc13db8f00000",
+      "name": "System Admin",
+      "email": "admin@streampulse.io",
+      "password": "$2a$10$PkEydxrlTnC.1CnfxhcZkuSJfDgfdJpROYVdlPOd.da7UK9JUXxWO",
+      "role": "admin",
+      "avatar": "",
+      "isActive": true,
+      "createdAt": "2026-08-31T14:07:13.891Z",
+      "updatedAt": "2026-08-31T14:07:13.891Z"
+    }
+  ],
+  "comments": [],
+  "likes": []
+}
