@@ -9,21 +9,22 @@ const secretAccessKey = process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY;
 const bucketName = process.env.CLOUDFLARE_R2_BUCKET_NAME || 'vedios-app-bucket';
 const publicUrl = (process.env.CLOUDFLARE_R2_PUBLIC_URL || '').replace(/\/$/, '');
 
-// Initialize S3 Client configured for Cloudflare R2
+// Initialize S3 Client configured for Cloudflare R2 with forcePathStyle
 const s3Client = new S3Client({
   region: 'auto',
   endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
   credentials: {
     accessKeyId: accessKeyId || '',
     secretAccessKey: secretAccessKey || ''
-  }
+  },
+  forcePathStyle: true
 });
 
 /**
  * Upload a file buffer or file path directly to Cloudflare R2
  * @param {Buffer|string} file - Buffer or path of the file
  * @param {string} originalName - Original file name with extension
- * @param {string} mimeType - MIME type of the file (e.g., video/mp4, image/jpeg)
+ * @param {string} mimeType - MIME type of the file (e.g., video/mp4, video/webm, image/jpeg)
  * @param {string} folder - Destination folder in R2 bucket (e.g., 'videos', 'thumbnails')
  * @returns {Promise<string>} Public CDN URL of the uploaded file
  */
@@ -46,7 +47,7 @@ export const uploadToR2 = async (file, originalName, mimeType, folder = 'videos'
       Bucket: bucketName,
       Key: key,
       Body: body,
-      ContentType: mimeType
+      ContentType: mimeType || (ext === '.webm' ? 'video/webm' : 'video/mp4')
     });
 
     await s3Client.send(command);
