@@ -5,15 +5,32 @@ dotenv.config();
 
 const MONGO_URI = process.env.MONGO_URI || 'mongodb+srv://devshawal_db_user:iDKbMuxueshsT1Xm@cluster0.yowtdbb.mongodb.net/video_app_db?retryWrites=true&w=majority';
 
+// Set connection options
+mongoose.set('bufferTimeoutMS', 15000);
+
 export const connectDB = async () => {
+  if (mongoose.connection.readyState === 1) {
+    return mongoose.connection;
+  }
+
   try {
     const conn = await mongoose.connect(MONGO_URI, {
-      serverSelectionTimeoutMS: 8000
+      serverSelectionTimeoutMS: 10000,
+      autoIndex: true
     });
     console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
     return conn;
   } catch (error) {
     console.error(`❌ MongoDB Connection Error: ${error.message}`);
-    console.error(`💡 Tip: Allow IP 0.0.0.0/0 in MongoDB Atlas -> Network Access tab.`);
+    console.error(`💡 Tip: Check MongoDB Atlas IP Whitelist (0.0.0.0/0).`);
+  }
+};
+
+/**
+ * Ensures MongoDB is connected before running any database query
+ */
+export const ensureConnected = async () => {
+  if (mongoose.connection.readyState !== 1) {
+    await connectDB();
   }
 };
