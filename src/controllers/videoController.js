@@ -32,16 +32,20 @@ export const createVideo = asyncWrapper(async (req, res) => {
   if (req.files) {
     if (req.files.video && req.files.video[0]) {
       const vFile = req.files.video[0];
+      console.log(`[R2 Upload] Uploading video file: ${vFile.originalname} (${vFile.size} bytes)`);
       videoUrl = await uploadToR2(vFile.path, vFile.originalname, vFile.mimetype, 'videos');
+      console.log(`[R2 Upload Success] Video CDN URL: ${videoUrl}`);
     }
     if (req.files.thumbnail && req.files.thumbnail[0]) {
       const tFile = req.files.thumbnail[0];
+      console.log(`[R2 Upload] Uploading thumbnail file: ${tFile.originalname}`);
       thumbnailUrl = await uploadToR2(tFile.path, tFile.originalname, tFile.mimetype, 'thumbnails');
+      console.log(`[R2 Upload Success] Thumbnail CDN URL: ${thumbnailUrl}`);
     }
   }
 
-  if (!title || !category || !videoUrl) {
-    return ApiResponse.error(res, 'Title, Category and Video File/URL are required', 400);
+  if (!title || !videoUrl) {
+    return ApiResponse.error(res, 'Title and Video File/URL are required', 400);
   }
 
   // Fallback thumbnail if not provided
@@ -49,36 +53,52 @@ export const createVideo = asyncWrapper(async (req, res) => {
     thumbnailUrl = 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=600&q=80';
   }
 
-  // Safe category resolution
-  let categoryId = category;
-  if (!mongoose.Types.ObjectId.isValid(category)) {
-    try {
-      let catDoc = await Category.findOne({ name: category });
-      if (!catDoc) {
-        catDoc = await Category.create({ name: category, icon: 'film' });
-      }
-      categoryId = catDoc._id;
-    } catch (_) {
-      categoryId = new mongoose.Types.ObjectId('6a959ef1dabc4bdec7eb236b');
+  // Safe category resolution: Always ensure a valid existing Category in MongoDB
+  let categoryId = null;
+  if (category && mongoose.Types.ObjectId.isValid(category)) {
+    const existingCat = await Category.findById(category);
+    if (existingCat) {
+      categoryId = existingCat._id;
     }
   }
 
-  const parsedTags = typeof tags === 'string' ? tags.split(',').map(t => t.trim()) : (Array.isArray(tags) ? tags : []);
+  if (!categoryId && category && typeof category === 'string' && category.trim() !== '') {
+    let catDoc = await Category.findOne({ name: { $regex: new RegExp(`^${category.trim()}$`, 'i') } });
+    if (!catDoc) {
+      catDoc = await Category.create({ name: category.trim(), icon: 'film' });
+      console.log(`[DB] Created new category: ${catDoc.name} (${catDoc._id})`);
+    }
+    categoryId = catDoc._id;
+  }
 
-  // Safe uploader resolution (no blocking)
+  if (!categoryId) {
+    let fallbackCat = await Category.findOne();
+    if (!fallbackCat) {
+      fallbackCat = await Category.create({ name: 'General', description: 'General Videos', icon: 'film' });
+      console.log(`[DB] Created default 'General' category: ${fallbackCat._id}`);
+    }
+    categoryId = fallbackCat._id;
+  }
+
+  const parsedTags = typeof tags === 'string' ? tags.split(',').map(t => t.trim()).filter(Boolean) : (Array.isArray(tags) ? tags : []);
+
+  // Safe uploader resolution: Always ensure a valid existing User in MongoDB
   let uploaderId = req.user?._id;
   if (!uploaderId) {
-    try {
-      const defaultUser = await User.findOne();
-      if (defaultUser) {
-        uploaderId = defaultUser._id;
-      } else {
-        uploaderId = new mongoose.Types.ObjectId('6a953b9d5a696a6fa0989129');
-      }
-    } catch (_) {
-      uploaderId = new mongoose.Types.ObjectId('6a953b9d5a696a6fa0989129');
+    let defaultUser = await User.findOne({ role: 'admin' }) || await User.findOne();
+    if (!defaultUser) {
+      defaultUser = await User.create({
+        name: 'System Admin',
+        email: 'admin@streampulse.io',
+        password: 'adminpassword123',
+        role: 'admin'
+      });
+      console.log(`[DB] Created default admin user: ${defaultUser._id}`);
     }
+    uploaderId = defaultUser._id;
   }
+
+  console.log(`[MongoDB] Saving video record to MongoDB: "${title}" [Category: ${categoryId}, Uploader: ${uploaderId}]`);
 
   const video = await VideoService.createVideo({
     title,
@@ -90,7 +110,9 @@ export const createVideo = asyncWrapper(async (req, res) => {
     tags: parsedTags || []
   });
 
-  return ApiResponse.success(res, 'Video created and stored successfully', video, 201);
+  console.log(`✅ [MongoDB Success] Video saved successfully with ID: ${video._id}`);
+
+  return ApiResponse.success(res, 'Video created and stored successfully in MongoDB & Cloudflare R2', video, 201);
 });
 
 export const updateVideo = asyncWrapper(async (req, res) => {

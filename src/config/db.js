@@ -1,7 +1,13 @@
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
+import dns from 'dns';
 
 dotenv.config();
+
+// Fix Railway/Docker Node.js querySrv ENOTFOUND bug by using Google Public DNS
+try {
+  dns.setServers(['8.8.8.8', '8.8.4.4', '1.1.1.1']);
+} catch (_) {}
 
 const MONGO_URI = process.env.MONGO_URI || 'mongodb+srv://devshawal_db_user:iDKbMuxueshsT1Xm@cluster0.yowtdbb.mongodb.net/video_app_db?retryWrites=true&w=majority';
 

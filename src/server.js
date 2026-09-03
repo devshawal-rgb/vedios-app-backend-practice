@@ -6,9 +6,14 @@ import { seedDatabase } from './seed.js';
 const PORT = process.env.PORT || 5000;
 
 // Connect to Database & Auto Seed if empty
-connectDB().then(() => {
-  seedDatabase();
-});
+connectDB()
+  .then(() => {
+    seedDatabase();
+  })
+  .catch((err) => {
+    console.error(`⚠️ Initial DB Connection Failed: ${err.message}`);
+    console.error(`💡 Check MONGO_URI in Railway Variables & Atlas IP Whitelist (0.0.0.0/0).`);
+  });
 
 app.listen(PORT, () => {
   console.log(`=================================================`);
