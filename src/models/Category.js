@@ -7,6 +7,11 @@ const categorySchema = new mongoose.Schema({
     unique: true,
     trim: true
   },
+  type: {
+    type: String,
+    enum: ['video', 'document', 'both'],
+    default: 'video'
+  },
   description: {
     type: String,
     default: ''

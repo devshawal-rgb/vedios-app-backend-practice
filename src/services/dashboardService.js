@@ -1,11 +1,13 @@
 import { User } from '../models/User.js';
 import { Video } from '../models/Video.js';
+import { Document } from '../models/Document.js';
 import { Category } from '../models/Category.js';
 
 export class DashboardService {
   static async getAdminStats() {
     const totalUsers = await User.countDocuments();
     const totalVideos = await Video.countDocuments();
+    const totalDocuments = await Document.countDocuments();
     const totalCategories = await Category.countDocuments();
 
     const viewsResult = await Video.aggregate([
@@ -18,6 +20,11 @@ export class DashboardService {
       .sort({ createdAt: -1 })
       .limit(5);
 
+    const recentDocuments = await Document.find()
+      .populate('category', 'name icon')
+      .sort({ createdAt: -1 })
+      .limit(5);
+
     const recentUsers = await User.find()
       .select('-password')
       .sort({ createdAt: -1 })
@@ -26,9 +33,11 @@ export class DashboardService {
     return {
       totalUsers,
       totalVideos,
+      totalDocuments,
       totalCategories,
       totalViews,
       recentVideos,
+      recentDocuments,
       recentUsers
     };
   }

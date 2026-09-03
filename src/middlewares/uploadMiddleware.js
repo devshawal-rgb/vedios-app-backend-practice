@@ -21,7 +21,7 @@ const storage = multer.diskStorage({
   }
 });
 
-// File filter for videos and images
+// File filter for videos, documents and images
 const fileFilter = (req, file, cb) => {
   if (file.fieldname === 'video') {
     if (file.mimetype.startsWith('video/')) {
@@ -35,6 +35,9 @@ const fileFilter = (req, file, cb) => {
     } else {
       cb(new Error('Only image files are allowed!'), false);
     }
+  } else if (file.fieldname === 'document' || file.fieldname === 'file') {
+    // Allow all document MIME types (PDF, Word, Excel, PowerPoint, Text, Zip, etc.)
+    cb(null, true);
   } else {
     cb(null, true);
   }
